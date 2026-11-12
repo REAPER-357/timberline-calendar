@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en" class="dark" data-theme="black">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Timberline Calendar & Planner</title>
+
+    <!-- PWA & Theme Integration -->
+    <meta name="theme-color" content="#000000" id="metaTheme">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ef4444'/%3E%3Crect x='12' y='18' width='40' height='34' rx='5' fill='white'/%3E%3Crect x='12' y='18' width='40' height='10' rx='5' fill='%23991b1b'/%3E%3Crect x='20' y='10' width='4' height='12' rx='2' fill='white'/%3E%3Crect x='40' y='10' width='4' height='12' rx='2' fill='white'/%3E%3C/svg%3E">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for XLS/XLSX Import and Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        if (window.tailwind) { tailwind.config = { darkMode: 'class' }; }
+    </script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --accent-color: #ef4444;
+            --page-bg: #000000;
+            --page-fg: #f1f5f9;
+            --panel-bg: #18181b;
+            --inset-bg: #0b0b0d;
+            --soft-bg: #27272a;
+            --soft-hover: #3f3f46;
+            --line: #27272a;
+            --muted: #a1a1aa;
+            --faint: #71717a;
+            --bar-bg: rgba(0, 0, 0, 0.92);
+            --nav-bg: #09090b;
+            color-scheme: dark;
+        }
+        [data-theme="dark"] {
+            --page-bg: #0f172a; --panel-bg: #1e293b; --inset-bg: #0f172a;
+            --soft-bg: #334155; --soft-hover: #475569; --line: #334155;
+            --muted: #94a3b8; --faint: #64748b;
+            --bar-bg: rgba(15, 23, 42, 0.92); --nav-bg: #020617;
+        }
+        [data-theme="light"] {
+            --page-bg: #f1f5f9; --page-fg: #1e293b; --panel-bg: #ffffff; --inset-bg: #f1f5f9;
+            --soft-bg: #e2e8f0; --soft-hover: #cbd5e1; --line: #cbd5e1;
+            --muted: #64748b; --faint: #94a3b8;
+            --bar-bg: rgba(255, 255, 255, 0.92); --nav-bg: #e2e8f0;
+            color-scheme: light;
+        }
+
+        body { background-color: var(--page-bg); color: var(--page-fg); -webkit-tap-highlight-color: transparent; }
+        .panel-bg { background-color: var(--panel-bg); }
+        .inset-bg { background-color: var(--inset-bg); }
+        .line { border-color: var(--line) !important; }
+        .txt-muted { color: var(--muted); }
+        .txt-faint { color: var(--faint); }
+        .txt-main { color: var(--page-fg); }
+        .app-header { background-color: var(--bar-bg); border-color: var(--line); padding-top: max(0.75rem, env(safe-area-inset-top)); }
+        .app-nav { background-color: var(--nav-bg); border-color: var(--line); }
+        .tab-btn { color: var(--muted); border-bottom: 2px solid transparent; }
+        .tab-btn:hover { color: var(--page-fg); }
+        .tab-btn.active { border-color: var(--accent-color); color: var(--accent-color); font-weight: 700; }
+
+        .accent-text { color: var(--accent-color) !important; }
+        .accent-bg { background-color: var(--accent-color) !important; color: #fff; }
+        .accent-border { border-color: var(--accent-color) !important; }
+        input[type=range], input[type=checkbox] { accent-color: var(--accent-color); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .selectable { user-select: text; -webkit-user-select: text; }
+
+        .field {
+            background: var(--inset-bg); border: 1px solid var(--line); color: var(--page-fg);
+            border-radius: 0.75rem; padding: 0.5rem 0.75rem; width: 100%; font-size: 0.75rem;
+        }
+        .field:focus { outline: none; border-color: var(--accent-color); }
+        @media (max-width: 640px) { .field { font-size: 16px; } }
+        .btn-soft { background: var(--soft-bg); color: var(--page-fg); border-radius: 0.75rem; transition: background .15s; }
+        .btn-soft:hover { background: var(--soft-hover); }
+        .btn-danger { background: rgba(239,68,68,.12); color: #ef4444; border: 1px solid rgba(239,68,68,.35); border-radius: 0.75rem; }
+        .btn-danger:hover { background: rgba(239,68,68,.22); }
+        .card { background: var(--inset-bg); border: 1px solid var(--line); border-radius: 1rem; }
+
+        .cell {
+            background: var(--inset-bg); border: 1px solid var(--line); border-radius: .75rem;
+            min-height: 58px; padding: 4px; text-align: left; display: flex; flex-direction: column;
+            gap: 3px; transition: border-color .15s; width: 100%; overflow: hidden;
+        }
+        @media (min-width: 640px) { .cell { min-height: 92px; padding: 6px; } }
+        .cell:hover { border-color: var(--faint); }
+        .cell.selected { border-color: var(--accent-color); box-shadow: 0 0 0 1px var(--accent-color) inset; }
+        .cell.dim { opacity: .45; }
+        .num { font-size: 11px; font-weight: 700; color: var(--page-fg); width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; }
+        .num.today { background: var(--accent-color); color: #fff; }
+        .chip { font-size: 9px; padding: 1px 5px; border-radius: 4px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+        .dot { width: 6px; height: 6px; border-radius: 9999px; display: inline-block; }
+        .entry { cursor: pointer; transition: border-color .15s; }
+        .entry:hover { border-color: var(--faint) !important; }
+        .done-text { text-decoration: line-through; opacity: .55; }
+        .modal-backdrop { background: rgba(0,0,0,.78); backdrop-filter: blur(4px); }
+        .seg button { padding: .35rem .6rem; font-size: 11px; border-radius: .6rem; color: var(--muted); }
+        .seg button.on { background: var(--accent-color); color: #fff; font-weight: 600; }
+        .opt-on { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+        .swatch-on { box-shadow: 0 0 0 2px var(--panel-bg), 0 0 0 4px var(--page-fg); transform: scale(1.08); }
+        details > summary { cursor: pointer; list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+    </style>
+</head>
+<body id="appBody" class="min-h-screen flex flex-col font-sans transition-colors duration-200 select-none pb-24">
+
+    <!-- TOP HEADER (no credit on the main page) -->
+    <header class="app-header sticky top-0 z-30 backdrop-blur-md border-b line px-4 pb-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl accent-bg flex items-center justify-center font-bold shadow-sm flex-shrink-0">
+                <i class="fa-solid fa-calendar-days"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 id="appTitleHeader" class="text-base font-bold tracking-tight leading-none accent-text truncate">TIMBERLINE CALENDAR</h1>
+                <p class="text-[10px] txt-muted font-medium truncate">Timetable · Holidays · Planner</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-1.5 flex-shrink-0">
+            <button id="btnHeaderSync" aria-label="Sync now" class="hidden p-2.5 rounded-xl txt-muted hover:opacity-80 transition" data-act="syncnow">
+                <i id="syncIcon" class="fa-solid fa-arrows-rotate text-base"></i>
+            </button>
+            <button id="openSearchBtn" aria-label="Search" class="p-2.5 rounded-xl txt-muted hover:opacity-80 transition">
+                <i class="fa-solid fa-magnifying-glass text-base"></i>
+            </button>
+            <button id="openAddModalBtn" class="accent-bg hover:opacity-90 text-xs font-semibold px-3 py-2 rounded-xl shadow-md transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Add Entry</span>
+            </button>
+            <button id="openSettingsBtn" aria-label="Settings" class="p-2.5 rounded-xl txt-muted hover:opacity-80 transition">
+                <i class="fa-solid fa-gear text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- TAB NAVIGATION -->
+    <nav class="app-nav border-b line px-4 pt-2">
+        <div class="flex space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar max-w-4xl mx-auto" id="navTabs">
+            <button data-tab="month" class="tab-btn active px-4 py-2.5 text-xs flex items-center space-x-2 whitespace-nowrap"><i class="fa-solid fa-calendar"></i> <span>Month</span></button>
+            <button data-tab="week" class="tab-btn px-4 py-2.5 text-xs flex items-center space-x-2 whitespace-nowrap"><i class="fa-solid fa-calendar-week"></i> <span>Week</span></button>
+            <button data-tab="day" class="tab-btn px-4 py-2.5 text-xs flex items-center space-x-2 whitespace-nowrap"><i class="fa-solid fa-calendar-day"></i> <span>Day</span></button>
+            <button data-tab="timetable" class="tab-btn px-4 py-2.5 text-xs flex items-center space-x-2 whitespace-nowrap"><i class="fa-solid fa-chalkboard-user"></i> <span>Timetable</span></button>
+            <button data-tab="tasks" class="tab-btn px-4 py-2.5 text-xs flex items-center space-x-2 whitespace-nowrap"><i class="fa-solid fa-list-check"></i> <span>Tasks</span></button>
+        </div>
+    </nav>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-[90] hidden px-4 py-2 rounded-xl panel-bg border line txt-main text-xs font-medium shadow-xl text-center max-w-[92vw] flex items-center gap-3">
+        <span id="toastMsg"></span>
+        <button id="toastAction" class="hidden accent-text font-bold underline"></button>
+    </div>
+
+    <!-- MAIN -->
+    <main id="mainArea" class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-4">
+
+        <!-- DATE NAVIGATION -->
+        <div id="dateBar" class="panel-bg p-3 rounded-2xl border line shadow-sm flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center space-x-2">
+                <button id="btnPrevDate" aria-label="Previous" class="w-8 h-8 rounded-xl btn-soft flex items-center justify-center"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                <button id="btnToday" class="px-3 py-1.5 rounded-xl btn-soft text-xs font-semibold">Today</button>
+                <button id="btnNextDate" aria-label="Next" class="w-8 h-8 rounded-xl btn-soft flex items-center justify-center"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+            </div>
+            <h2 id="currentDateLabel" class="text-xs sm:text-sm font-bold txt-main tracking-wide"></h2>
+            <div class="flex items-center space-x-2">
+                <label for="jumpDateInput" class="text-[10px] txt-muted hidden sm:inline">Go to:</label>
+                <input type="date" id="jumpDateInput" aria-label="Skip to date" class="field !w-auto !py-1 !px-2.5">
+            </div>
+        </div>
+
+        <section id="view-month" class="tab-view space-y-3">
+            <div class="panel-bg p-3 sm:p-4 rounded-3xl border line shadow-sm">
+                <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold txt-muted mb-2" id="monthWeekHeader"></div>
+                <div class="grid grid-cols-7 gap-1 sm:gap-1.5" id="monthGrid"></div>
+            </div>
+            <div id="monthAgenda" class="space-y-2"></div>
+        </section>
+
+        <section id="view-week" class="tab-view hidden space-y-2"><div id="weekContainer" class="space-y-2"></div></section>
+        <section id="view-day" class="tab-view hidden space-y-3"><div id="dayContainer" class="space-y-2"></div></section>
+
+        <section id="view-timetable" class="tab-view hidden space-y-3">
+            <div class="panel-bg p-4 rounded-2xl border line flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-bold txt-main">Class Timetable</h3>
+                    <p class="text-[11px] txt-muted">Your weekly classes by day, with rooms and instructors</p>
+                </div>
+                <button data-act="add" data-type="class" class="accent-bg text-xs font-semibold px-3 py-2 rounded-xl shadow"><i class="fa-solid fa-plus mr-1"></i> New Course</button>
+            </div>
+            <div id="timetableList" class="space-y-3"></div>
+        </section>
+
+        <section id="view-tasks" class="tab-view hidden space-y-3">
+            <div class="panel-bg p-4 rounded-2xl border line flex items-center justify-between gap-2">
+                <div>
+                    <h3 class="text-sm font-bold txt-main">Tasks & Reminders</h3>
+                    <p id="taskSummary" class="text-[11px] txt-muted">Deadlines and to-do list</p>
+                </div>
+                <button data-act="add" data-type="task" class="accent-bg text-xs font-semibold px-3 py-2 rounded-xl shadow"><i class="fa-solid fa-plus mr-1"></i> Add Task</button>
+            </div>
+            <div class="seg flex gap-1 panel-bg border line rounded-2xl p-1 w-fit" id="taskFilter">
+                <button data-act="filter" data-v="open" class="on">Open</button>
+                <button data-act="filter" data-v="done">Done</button>
+                <button data-act="filter" data-v="all">All</button>
+            </div>
+            <div id="tasksList" class="space-y-2"></div>
+        </section>
+    </main>
+
+    <!-- ADD / EDIT MODAL -->
+    <div id="eventModal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 hidden" data-modal>
+        <div class="panel-bg w-full max-w-sm rounded-3xl p-5 border line shadow-2xl space-y-3 text-left max-h-[92vh] overflow-y-auto no-scrollbar">
+            <div class="flex items-center justify-between border-b line pb-2">
+                <h3 id="modalTitle" class="text-sm font-bold txt-main">New Calendar Entry</h3>
+                <button class="closeModalBtn txt-muted hover:opacity-70 text-lg" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1 txt-muted" for="eventType">Category</label>
+                    <select id="eventType" class="field">
+                        <option value="event">General Event / Reminder</option>
+                        <option value="class">Class / Course Timetable</option>
+                        <option value="task">To-Do Task</option>
+                        <option value="birthday">Birthday / Anniversary</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1 txt-muted" for="eventTitle">Title / Course Name</label>
+                    <input type="text" id="eventTitle" maxlength="200" placeholder="e.g. Higher Level English or Midterm Exam" class="field">
+                </div>
+
+                <div id="classExtraFields" class="space-y-2 border-l-2 accent-border pl-2.5 my-2 hidden">
+                    <div>
+                        <label class="block font-semibold mb-1 txt-muted" for="classPeriod">Class Period</label>
+                        <input type="text" id="classPeriod" placeholder="Period 1" class="field">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-semibold mb-1 txt-muted" for="classRoom">Room</label>
+                            <input type="text" id="classRoom" placeholder="Room 204" class="field">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1 txt-muted" for="classInstructor">Instructor</label>
+                            <input type="text" id="classInstructor" placeholder="Prof. Smith" class="field">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-semibold mb-1 txt-muted" for="eventDate">Date</label>
+                        <input type="date" id="eventDate" class="field">
+                    </div>
+                    <div class="flex items-end pb-2">
+                        <label class="flex items-center gap-2 cursor-pointer txt-main"><input type="checkbox" id="eventAllDay" class="w-4 h-4 rounded"> All day</label>
+                    </div>
+                </div>
+                <div id="timeRow" class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-semibold mb-1 txt-muted" for="eventTime">Start</label>
+                        <input type="time" id="eventTime" class="field">
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1 txt-muted" for="eventEndTime">End (optional)</label>
+                        <input type="time" id="eventEndTime" class="field">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 txt-muted" for="eventLocation">Location (optional)</label>
+                    <input type="text" id="eventLocation" maxlength="120" placeholder="Where?" class="field">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1 txt-muted" for="eventNotes">Notes (optional)</label>
+                    <textarea id="eventNotes" rows="2" maxlength="1000" class="field" placeholder="Anything to remember"></textarea>
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 txt-muted">Tag Color</label>
+                    <div class="flex items-center gap-3 pt-1 flex-wrap" id="colorPickerContainer"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-semibold mb-1 txt-muted" for="eventRepeat">Repeat</label>
+                        <select id="eventRepeat" class="field">
+                            <option value="none">Does not repeat</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekdays">Weekdays (Mon–Fri)</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="biweekly">Every 2 weeks</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                    <div id="untilWrap" class="hidden">
+                        <label class="block font-semibold mb-1 txt-muted" for="eventUntil">Repeat until</label>
+                        <input type="date" id="eventUntil" class="field">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 txt-muted" for="eventReminder">Reminder</label>
+                    <select id="eventReminder" class="field">
+                        <option value="">No reminder</option>
+                        <option value="0">At time of event</option>
+                        <option value="5">5 minutes before</option>
+                        <option value="10">10 minutes before</option>
+                        <option value="15">15 minutes before</option>
+                        <option value="30">30 minutes before</option>
+                        <option value="60">1 hour before</option>
+                        <option value="1440">1 day before</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3">
+                <button id="btnDeleteEvent" class="btn-danger px-3 py-2 text-xs font-semibold hidden"><i class="fa-solid fa-trash-can mr-1"></i> Delete</button>
+                <div class="flex justify-end space-x-2 ml-auto">
+                    <button class="closeModalBtn px-4 py-2 text-xs font-semibold btn-soft">Cancel</button>
+                    <button id="btnSaveEvent" class="px-4 py-2 text-xs font-semibold accent-bg rounded-xl shadow-md">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEARCH MODAL -->
+    <div id="searchModal" class="modal-backdrop fixed inset-0 z-50 flex items-start justify-center p-4 pt-16 hidden" data-modal>
+        <div class="panel-bg w-full max-w-md rounded-3xl p-4 border line shadow-2xl space-y-3 max-h-[80vh] flex flex-col">
+            <div class="flex items-center gap-2">
+                <input type="search" id="searchInput" placeholder="Search titles, notes, rooms, locations…" class="field" autocomplete="off">
+                <button class="closeModalBtn txt-muted hover:opacity-70 text-lg px-1" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="searchResults" class="space-y-2 overflow-y-auto no-scrollbar flex-1"></div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 hidden" data-modal>
+        <div class="panel-bg w-full max-w-md rounded-3xl p-5 border line shadow-2xl space-y-3.5 max-h-[90vh] overflow-y-auto no-scrollbar relative">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-bold txt-main">Calendar Settings</h3>
+                <button class="closeModalBtn txt-muted hover:opacity-70 text-lg" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- SYNC -->
+            <div class="card p-3.5 space-y-2.5 text-left">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold txt-main"><i class="fa-solid fa-cloud-arrow-up accent-text mr-1.5"></i> Sync</span>
+                    <span id="syncBadge" class="text-[10px] px-2 py-0.5 rounded-full btn-soft">Not set up</span>
+                </div>
+                <p class="text-[10px] txt-muted">Keep your calendar in sync across devices with a Google Apps Script web app (or any endpoint that stores and returns JSON). Changes from both sides are merged, newest edit wins.</p>
+                <input type="url" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" class="field" autocomplete="off" spellcheck="false">
+                <label class="flex items-center justify-between text-xs cursor-pointer txt-main"><span>Auto-sync after every change</span><input type="checkbox" id="syncAuto" class="w-4 h-4 rounded"></label>
+                <label class="flex items-center justify-between text-xs cursor-pointer txt-main"><span>Sync when the app opens</span><input type="checkbox" id="syncOnOpen" class="w-4 h-4 rounded"></label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button data-act="syncnow" class="py-2 px-2 rounded-xl text-[11px] font-semibold accent-bg"><i class="fa-solid fa-arrows-rotate mr-1"></i>Sync now</button>
+                    <button data-act="syncpush" class="py-2 px-2 rounded-xl text-[11px] font-semibold btn-soft"><i class="fa-solid fa-arrow-up mr-1"></i>Push</button>
+                    <button data-act="syncpull" class="py-2 px-2 rounded-xl text-[11px] font-semibold btn-soft"><i class="fa-solid fa-arrow-down mr-1"></i>Pull</button>
+                </div>
+                <p id="syncStatus" class="text-[10px] txt-muted">Never synced.</p>
+                <details class="text-[11px]">
+                    <summary class="accent-text font-semibold"><i class="fa-solid fa-circle-question mr-1"></i> How to set up Google Sheets sync</summary>
+                    <ol class="list-decimal pl-4 mt-2 space-y-1 txt-muted">
+                        <li>Create a Google Sheet, then open <b>Extensions › Apps Script</b>.</li>
+                        <li>Delete the sample code, paste the script below, and save.</li>
+                        <li>Click <b>Deploy › New deployment › Web app</b>. Execute as <b>Me</b>, access <b>Anyone</b>. Deploy and authorise.</li>
+                        <li>Copy the <b>/exec</b> URL into the box above and tap <b>Sync now</b>.</li>
+                    </ol>
+                    <pre id="gsScript" class="selectable mt-2 p-2 rounded-xl inset-bg border line text-[10px] overflow-x-auto whitespace-pre"></pre>
+                    <button data-act="copyscript" class="mt-2 px-3 py-1.5 rounded-xl btn-soft text-[11px] font-semibold"><i class="fa-regular fa-copy mr-1"></i> Copy script</button>
+                    <p class="mt-2 txt-faint">Anyone with the URL can read and overwrite the data, so keep it private.</p>
+                </details>
+            </div>
+
+            <!-- BACKUP -->
+            <div class="card p-3.5 space-y-2 text-left">
+                <span class="text-xs font-semibold txt-main"><i class="fa-solid fa-file-excel accent-text mr-1.5"></i> Backup, Import & Export</span>
+                <p class="text-[10px] txt-muted">Excel (.xlsx/.xls), JSON, or iCalendar (.ics) for Google / Apple Calendar.</p>
+                <div class="grid grid-cols-3 gap-2 pt-1">
+                    <button id="btnExportXls" class="py-2 px-2 rounded-xl text-[11px] font-semibold bg-emerald-700 hover:bg-emerald-600 text-white flex items-center justify-center gap-1.5"><i class="fa-solid fa-file-excel"></i><span>Excel</span></button>
+                    <button id="btnExportJson" class="py-2 px-2 rounded-xl text-[11px] font-semibold btn-soft flex items-center justify-center gap-1.5"><i class="fa-solid fa-download"></i><span>JSON</span></button>
+                    <button id="btnExportIcs" class="py-2 px-2 rounded-xl text-[11px] font-semibold btn-soft flex items-center justify-center gap-1.5"><i class="fa-regular fa-calendar-check"></i><span>.ics</span></button>
+                </div>
+                <label class="block py-2 px-3 rounded-xl text-xs font-semibold btn-soft text-center cursor-pointer border border-dashed line">
+                    <i class="fa-solid fa-file-import mr-1"></i> Import XLS / XLSX / JSON
+                    <input type="file" id="importFileInput" accept=".xls,.xlsx,.json" class="hidden">
+                </label>
+            </div>
+
+            <!-- PREFERENCES -->
+            <div class="card p-3.5 space-y-2.5 text-left">
+                <span class="text-xs font-semibold txt-main"><i class="fa-solid fa-sliders accent-text mr-1.5"></i> Preferences</span>
+                <div class="flex items-center justify-between gap-3">
+                    <label for="startWeekSelect" class="text-xs txt-main">Start week on</label>
+                    <select id="startWeekSelect" class="field !w-auto !py-1.5">
+                        <option value="1">Monday</option>
+                        <option value="0">Sunday</option>
+                        <option value="6">Saturday</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-xs txt-main">Time format</span>
+                    <div class="seg flex gap-1 inset-bg border line rounded-xl p-0.5" id="timeFmtSeg">
+                        <button data-act="timefmt" data-v="24">24-hour</button>
+                        <button data-act="timefmt" data-v="12">12-hour</button>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-xs txt-main">Reminder notifications</span>
+                    <button data-act="notify" id="btnNotify" class="px-3 py-1.5 rounded-xl btn-soft text-[11px] font-semibold">Enable</button>
+                </div>
+                <p class="text-[10px] txt-faint">Reminders fire while the calendar is open in a tab or installed app.</p>
+            </div>
+
+            <!-- THEME -->
+            <div class="card p-3.5 space-y-2 text-left">
+                <span class="text-xs font-semibold txt-main"><i class="fa-solid fa-palette accent-text mr-1.5"></i> Theme</span>
+                <div class="grid grid-cols-3 gap-2 pt-1" id="themeBtns">
+                    <button data-act="theme" data-v="black" class="py-1.5 px-2 rounded-xl text-xs font-medium bg-zinc-900 border border-zinc-700 text-white">Pure Black</button>
+                    <button data-act="theme" data-v="dark" class="py-1.5 px-2 rounded-xl text-xs font-medium bg-slate-700 border border-slate-600 text-slate-100">Dark</button>
+                    <button data-act="theme" data-v="light" class="py-1.5 px-2 rounded-xl text-xs font-medium bg-slate-200 border border-slate-300 text-slate-800">Light</button>
+                </div>
+                <span class="text-[11px] txt-muted block pt-1">Accent color</span>
+                <div class="flex items-center justify-around pt-1" id="accentBtns"></div>
+            </div>
+
+            <!-- HOLIDAYS -->
+            <div class="card p-3.5 space-y-2.5 text-left">
+                <span class="text-xs font-semibold txt-main"><i class="fa-solid fa-star-and-crescent accent-text mr-1.5"></i> Holiday Packs</span>
+                <div class="space-y-2 text-xs txt-main">
+                    <label class="flex items-center justify-between cursor-pointer"><span>Cambodia public holidays</span><input type="checkbox" id="packCambodia" data-pack="cambodia" class="w-4 h-4 rounded"></label>
+                    <label class="flex items-center justify-between cursor-pointer"><span>Christian (Christmas, Easter)</span><input type="checkbox" id="packChristian" data-pack="christian" class="w-4 h-4 rounded"></label>
+                    <label class="flex items-center justify-between cursor-pointer"><span>Lunar & Khmer New Year</span><input type="checkbox" id="packLunar" data-pack="lunar" class="w-4 h-4 rounded"></label>
+                    <label class="flex items-center justify-between cursor-pointer"><span>Islamic (Ramadan, Eid)</span><input type="checkbox" id="packIslamic" data-pack="islamic" class="w-4 h-4 rounded"></label>
+                    <label class="flex items-center justify-between cursor-pointer"><span>Jewish (Passover, Hanukkah)</span><input type="checkbox" id="packJewish" data-pack="jewish" class="w-4 h-4 rounded"></label>
+                </div>
+                <p class="text-[10px] txt-faint">Covers 2026–2030 where dates move. Lunar and Islamic dates can shift by a day with moon sighting; Jewish holidays start at the previous sunset.</p>
+            </div>
+
+            <!-- DANGER -->
+            <div class="card p-3.5 space-y-2 text-left">
+                <span class="text-xs font-semibold txt-main"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1.5"></i> Data</span>
+                <button data-act="resetall" class="w-full py-2 text-xs font-semibold btn-danger">Delete all entries on this device</button>
+            </div>
+
+            <!-- CREDIT: only here, at the bottom of settings -->
+            <div class="text-center pt-1 pb-1 space-y-0.5">
+                <p class="text-[11px] font-semibold txt-muted">Timberline Calendar · v2.0</p>
+                <p class="text-[10px] txt-faint">Created by REAPER-357</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- DIALOG -->
+    <div id="dialogModal" class="modal-backdrop fixed inset-0 z-[70] flex items-center justify-center p-4 hidden" data-modal>
+        <div class="panel-bg w-full max-w-xs rounded-3xl p-5 border line shadow-2xl space-y-3 text-left">
+            <h3 id="dlgTitle" class="text-sm font-bold txt-main"></h3>
+            <p id="dlgText" class="text-xs txt-muted"></p>
+            <div id="dlgBtns" class="flex flex-wrap justify-end gap-2 pt-1"></div>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+
+        /* ---------- helpers ---------- */
+        const $ = id => document.getElementById(id);
+        const pad = n => String(n).padStart(2, '0');
+        const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+        const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const todayStr = () => fmt(new Date());
+        const addDays = (d, n) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); return x; };
+        const daysIn = (y, m) => new Date(y, m + 1, 0).getDate();
+        const addMonths = (d, n) => { const t = new Date(d.getFullYear(), d.getMonth() + n, 1); return new Date(t.getFullYear(), t.getMonth(), Math.min(d.getDate(), daysIn(t.getFullYear(), t.getMonth()))); };
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const uid = () => 'evt_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        const rawGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } };
+        const rawSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
+        const jsonGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } };
+        const jsonSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } };
+
+        const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899'];
+        const REPEATS = ['none', 'daily', 'weekdays', 'weekly', 'biweekly', 'monthly', 'yearly'];
+        const TYPES = ['event', 'class', 'task', 'birthday'];
+        const TYPE_LABEL = { event: 'Event', class: 'Class', task: 'Task', birthday: 'Birthday' };
+        const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const WD_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        /* ---------- state ---------- */
+        const state = { tab: 'month', date: startOfDay(new Date()), taskFilter: 'open' };
+        let settings = {
+            startWeek: parseInt(rawGet('loonie_start_week', '1')),
+            timeFmt: rawGet('loonie_time_fmt', '24'),
+            packs: Object.assign({ cambodia: true, christian: true, lunar: true, islamic: false, jewish: false }, jsonGet('loonie_holiday_packs', {})),
+            updatedAt: Number(rawGet('loonie_settings_ts', '0'))
+        };
+        if (![0, 1, 6].includes(settings.startWeek)) settings.startWeek = 1;
+        let accent = rawGet('lt_accent_color', '#ef4444');
+        let theme = rawGet('lt_app_theme', 'black');
+        let events = [];
+        let deleted = jsonGet('loonie_deleted', {});
+        let sync = Object.assign({ url: '', auto: true, onOpen: true, last: 0, status: '' }, jsonGet('loonie_sync', {}));
+        let editingId = null, formColor = accent, syncing = false, syncTimer = null, toastTimer = null, dialogResolve = null;
+        let fired = new Set(jsonGet('loonie_fired', []));
+
+        /* ---------- normalising entries (old data, imports, sync) ---------- */
+        const truthy = v => v === true || v === 1 || /^(true|yes|1)$/i.test(String(v));
+        function normDate(v) {
+            if (v == null || v === '') return '';
+            if (v instanceof Date) return fmt(v);
+            if (typeof v === 'number') { const d = new Date(Math.round((v - 25569) * 864e5)); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; }
+            const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+        }
+        function normTime(v) {
+            if (v == null || v === '') return '';
+            if (typeof v === 'number' && v >= 0 && v < 1) { const mins = Math.round(v * 1440); return `${pad(Math.floor(mins / 60) % 24)}:${pad(mins % 60)}`; }
+            const m = String(v).match(/^(\d{1,2}):(\d{2})/);
+            return m ? `${pad(+m[1])}:${m[2]}` : '';
+        }
+        function normalizeEvent(r) {
+            if (!r || typeof r !== 'object') return null;
+            const date = normDate(r.date) || todayStr();
+            const type = TYPES.includes(r.type) ? r.type : 'event';
+            let time = normTime(r.time);
+            const allDay = truthy(r.allDay) || (type === 'birthday' && (!time || time === '00:00'));
+            const doneDates = Array.isArray(r.doneDates) ? r.doneDates.map(String) : String(r.doneDates || '').split(',').map(s => s.trim()).filter(Boolean);
+            return {
+                id: String(r.id || uid()),
+                title: String(r.title || 'Untitled').slice(0, 200),
+                type, date,
+                time: allDay ? '' : time,
+                endTime: allDay ? '' : normTime(r.endTime),
+                allDay,
+                color: /^#[0-9a-f]{6}$/i.test(r.color || '') ? r.color : '#ef4444',
+                repeat: REPEATS.includes(r.repeat) ? r.repeat : 'none',
+                until: normDate(r.until),
+                reminder: r.reminder == null ? '' : String(r.reminder),
+                location: String(r.location || '').slice(0, 120),
+                notes: String(r.notes || '').slice(0, 1000),
+                period: String(r.period || ''), room: String(r.room || ''), instructor: String(r.instructor || ''),
+                completed: truthy(r.completed),
+                doneDates,
+                updatedAt: Number(r.updatedAt) || 0
+            };
+        }
+        function loadEvents() {
+            const stored = jsonGet('loonie_calendar_events', null);
+            const base = Array.isArray(stored) ? stored : [
+                { id: '1', title: 'Grade 11 IELTS Prep', type: 'class', date: '2026-10-27', time: '08:30', period: 'Period 1', room: 'Room 101', instructor: 'Mr. David', color: '#10b981', repeat: 'weekly' },
+                { id: '2', title: 'Submit Midterm Exam Marks', type: 'task', date: '2026-10-30', time: '17:00', color: '#ef4444', repeat: 'none' },
+                { id: '3', title: 'Sister’s Birthday', type: 'birthday', date: '2026-11-05', time: '00:00', color: '#a855f7', repeat: 'yearly' }
+            ];
+            events = base.map(normalizeEvent).filter(Boolean);
+        }
+
+        /* ---------- persistence ---------- */
+        function saveLocal() {
+            jsonSet('loonie_calendar_events', events);
+            jsonSet('loonie_deleted', deleted);
+        }
+        function saveSettings(touch = true) {
+            rawSet('loonie_start_week', String(settings.startWeek));
+            rawSet('loonie_time_fmt', settings.timeFmt);
+            jsonSet('loonie_holiday_packs', settings.packs);
+            if (touch) { settings.updatedAt = Date.now(); }
+            rawSet('loonie_settings_ts', String(settings.updatedAt));
+        }
+        const saveSync = () => jsonSet('loonie_sync', sync);
+        function commit() { saveLocal(); renderApp(); scheduleSync(); }
+
+        /* ---------- holidays ---------- */
+        const HOL_FIXED = {
+            christian: [['01-01', 'New Year’s Day', '#3b82f6'], ['12-24', 'Christmas Eve', '#ef4444'], ['12-25', 'Christmas Day', '#ef4444']],
+            lunar: [['04-14', 'Khmer New Year', '#10b981'], ['04-15', 'Khmer New Year (Day 2)', '#10b981'], ['04-16', 'Khmer New Year (Day 3)', '#10b981']],
+            cambodia: [['01-01', 'International New Year', '#3b82f6'], ['01-07', 'Victory over Genocide Day', '#06b6d4'], ['03-08', 'International Women’s Day', '#ec4899'], ['05-01', 'Labour Day', '#06b6d4'], ['05-14', 'King’s Birthday', '#06b6d4'], ['06-18', 'Queen Mother’s Birthday', '#06b6d4'], ['09-24', 'Constitution Day', '#06b6d4'], ['10-15', 'King Father’s Commemoration', '#06b6d4'], ['10-29', 'Coronation Day', '#06b6d4'], ['11-09', 'Independence Day', '#06b6d4']]
+        };
+        const HOL_DATED = {
+            lunar: { '2026-02-17': 'Lunar New Year', '2027-02-06': 'Lunar New Year', '2028-01-26': 'Lunar New Year', '2029-02-13': 'Lunar New Year', '2030-02-03': 'Lunar New Year' },
+            islamic: {
+                '2026-02-18': 'Ramadan begins', '2027-02-08': 'Ramadan begins', '2028-01-28': 'Ramadan begins', '2029-01-16': 'Ramadan begins', '2030-01-05': 'Ramadan begins',
+                '2026-03-20': 'Eid al-Fitr', '2027-03-09': 'Eid al-Fitr', '2028-02-26': 'Eid al-Fitr', '2029-02-14': 'Eid al-Fitr', '2030-02-04': 'Eid al-Fitr',
+                '2026-05-27': 'Eid al-Adha', '2027-05-17': 'Eid al-Adha', '2028-05-05': 'Eid al-Adha', '2029-04-24': 'Eid al-Adha', '2030-04-13': 'Eid al-Adha',
+                '2026-06-16': 'Islamic New Year', '2027-06-06': 'Islamic New Year', '2028-05-26': 'Islamic New Year', '2029-05-15': 'Islamic New Year', '2030-05-05': 'Islamic New Year'
+            },
+            jewish: {
+                '2026-04-02': 'Passover begins', '2027-04-22': 'Passover begins', '2028-04-11': 'Passover begins', '2029-03-31': 'Passover begins', '2030-04-18': 'Passover begins',
+                '2026-09-12': 'Rosh Hashanah', '2027-10-02': 'Rosh Hashanah', '2028-09-21': 'Rosh Hashanah', '2029-09-10': 'Rosh Hashanah', '2030-09-28': 'Rosh Hashanah',
+                '2026-09-21': 'Yom Kippur', '2027-10-11': 'Yom Kippur', '2028-09-30': 'Yom Kippur', '2029-09-19': 'Yom Kippur', '2030-10-07': 'Yom Kippur',
+                '2026-12-04': 'Hanukkah begins', '2027-12-24': 'Hanukkah begins', '2028-12-12': 'Hanukkah begins', '2029-12-01': 'Hanukkah begins', '2030-12-20': 'Hanukkah begins'
+            }
+        };
+        const HOL_COLOR = { lunar: '#ef4444', islamic: '#10b981', jewish: '#f59e0b', christian: '#ef4444' };
+        const easterCache = {};
+        function easter(y) {
+            if (easterCache[y]) return easterCache[y];
+            const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+            const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+            const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+            return easterCache[y] = new Date(y, month - 1, day);
+        }
+        function holidaysOn(ds) {
+            const out = [], md = ds.slice(5), y = +ds.slice(0, 4);
+            for (const pack of Object.keys(HOL_FIXED)) {
+                if (!settings.packs[pack]) continue;
+                for (const [d, t, c] of HOL_FIXED[pack]) if (d === md) out.push({ holiday: true, title: t, color: c, date: ds });
+            }
+            for (const pack of Object.keys(HOL_DATED)) {
+                if (!settings.packs[pack]) continue;
+                const t = HOL_DATED[pack][ds];
+                if (t) out.push({ holiday: true, title: t, color: HOL_COLOR[pack], date: ds });
+            }
+            if (settings.packs.christian) {
+                const e = easter(y);
+                if (ds === fmt(e)) out.push({ holiday: true, title: 'Easter Sunday', color: '#ef4444', date: ds });
+                if (ds === fmt(addDays(e, -2))) out.push({ holiday: true, title: 'Good Friday', color: '#ef4444', date: ds });
+            }
+            return out;
+        }
+
+        /* ---------- recurrence ---------- */
+        function occursOn(ev, ds) {
+            if (ds < ev.date) return false;
+            if (ev.repeat !== 'none' && ev.until && ds > ev.until) return false;
+            if (ds === ev.date) return true;
+            if (ev.repeat === 'none') return false;
+            const a = parse(ev.date), b = parse(ds);
+            switch (ev.repeat) {
+                case 'daily': return true;
+                case 'weekdays': return b.getDay() >= 1 && b.getDay() <= 5;
+                case 'weekly': return a.getDay() === b.getDay();
+                case 'biweekly': return a.getDay() === b.getDay() && Math.round((b - a) / 864e5) % 14 === 0;
+                case 'monthly': return b.getDate() === Math.min(a.getDate(), daysIn(b.getFullYear(), b.getMonth()));
+                case 'yearly': return a.getMonth() === b.getMonth() && b.getDate() === Math.min(a.getDate(), daysIn(b.getFullYear(), b.getMonth()));
+            }
+            return false;
+        }
+        const sortKey = e => (e.holiday ? '0' : e.allDay || !e.time ? '1' : '2') + (e.time || '') + (e.title || '').toLowerCase();
+        function eventsOn(ds, opts = {}) {
+            const list = events.filter(e => occursOn(e, ds));
+            const all = opts.noHoliday ? list : [...holidaysOn(ds), ...list];
+            return all.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+        }
+        function isDone(ev, ds) { return ev.repeat === 'none' ? !!ev.completed : ev.doneDates.includes(ds); }
+        function nextOccurrence(ev, from) {
+            if (ev.repeat === 'none') return ev.date;
+            let d = parse(from > ev.date ? from : ev.date);
+            for (let i = 0; i < 400; i++, d = addDays(d, 1)) { const s = fmt(d); if (occursOn(ev, s)) return s; }
+            return null;
+        }
+
+        /* ---------- formatting ---------- */
+        function fmtTime(t) {
+            if (!t) return '';
+            if (settings.timeFmt !== '12') return t;
+            const [h, m] = t.split(':').map(Number);
+            return `${h % 12 || 12}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`;
+        }
+        const timeText = ev => (ev.allDay || !ev.time) ? 'All day' : fmtTime(ev.time) + (ev.endTime ? ' – ' + fmtTime(ev.endTime) : '');
+        const longDate = d => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        const shortDate = s => parse(s).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+        /* ---------- toast / dialog / modals ---------- */
+        function showToast(msg, action) {
+            clearTimeout(toastTimer);
+            $('toastMsg').textContent = msg;
+            const btn = $('toastAction');
+            if (action) { btn.textContent = action.label; btn.classList.remove('hidden'); btn.onclick = () => { $('toast').classList.add('hidden'); action.run(); }; }
+            else { btn.classList.add('hidden'); btn.onclick = null; }
+            $('toast').classList.remove('hidden');
+            toastTimer = setTimeout(() => $('toast').classList.add('hidden'), action ? 6000 : 2600);
+        }
+        function openModal(id) { $(id).classList.remove('hidden'); }
+        function closeModal(id) {
+            $(id).classList.add('hidden');
+            if (id === 'dialogModal' && dialogResolve) { const r = dialogResolve; dialogResolve = null; r(null); }
+        }
+        function closeTopModal() {
+            const open = [...document.querySelectorAll('[data-modal]')].filter(m => !m.classList.contains('hidden'));
+            if (open.length) { closeModal(open.sort((a, b) => (parseInt(getComputedStyle(b).zIndex) || 0) - (parseInt(getComputedStyle(a).zIndex) || 0))[0].id); return true; }
+            return false;
+        }
+        function ask(title, text, buttons) {
+            return new Promise(res => {
+                $('dlgTitle').textContent = title; $('dlgText').textContent = text;
+                const box = $('dlgBtns'); box.innerHTML = '';
+                buttons.forEach(b => {
+                    const el = document.createElement('button');
+                    el.className = (b.primary ? 'accent-bg' : b.danger ? 'btn-danger' : 'btn-soft') + ' px-3.5 py-2 text-xs font-semibold rounded-xl';
+                    el.textContent = b.label;
+                    el.onclick = () => { const r = dialogResolve; dialogResolve = null; closeModal('dialogModal'); r && r(b.value); };
+                    box.appendChild(el);
+                });
+                dialogResolve = res; openModal('dialogModal');
+            });
+        }
+
+        /* ---------- theme ---------- */
+        function applyAccent(hex, save = true) {
+            accent = hex; if (save) rawSet('lt_accent_color', hex);
+            document.documentElement.style.setProperty('--accent-color', hex);
+            document.querySelectorAll('#accentBtns [data-v]').forEach(b => b.classList.toggle('swatch-on', b.dataset.v === hex));
+        }
+        function applyTheme(t, save = true) {
+            theme = t; if (save) rawSet('lt_app_theme', t);
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.classList.toggle('dark', t !== 'light');
+            $('metaTheme').setAttribute('content', t === 'light' ? '#f1f5f9' : t === 'dark' ? '#0f172a' : '#000000');
+            document.querySelectorAll('#themeBtns [data-v]').forEach(b => b.classList.toggle('opt-on', b.dataset.v === t));
+        }
+
+        /* ---------- navigation ---------- */
+        function setTab(tab) {
+            state.tab = tab;
+            document.querySelectorAll('#navTabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
+            $('view-' + tab).classList.remove('hidden');
+            renderApp();
+        }
+        function weekStart(d) { return addDays(d, -((d.getDay() - settings.startWeek + 7) % 7)); }
+        function shift(dir) {
+            if (state.tab === 'month') state.date = addMonths(state.date, dir);
+            else if (state.tab === 'week') state.date = addDays(state.date, 7 * dir);
+            else state.date = addDays(state.date, dir);
+            renderApp();
+        }
+        function gotoDay(ds) { state.date = parse(ds); setTab('day'); }
+
+        /* ---------- rendering ---------- */
+        function renderApp() {
+            const t = state.tab;
+            $('dateBar').classList.toggle('hidden', t === 'timetable' || t === 'tasks');
+            updateDateHeader();
+            if (t === 'month') renderMonth();
+            else if (t === 'week') renderWeek();
+            else if (t === 'day') renderDay();
+            else if (t === 'timetable') renderTimetable();
+            else renderTasks();
+        }
+        function updateDateHeader() {
+            const d = state.date; let label;
+            if (state.tab === 'week') {
+                const s = weekStart(d), e = addDays(s, 6);
+                const o1 = { day: 'numeric', month: 'short' }, o2 = { day: 'numeric', month: 'short', year: 'numeric' };
+                label = `${s.toLocaleDateString('en-US', o1)} – ${e.toLocaleDateString('en-US', o2)}`;
+            } else if (state.tab === 'day') label = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+            else label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            $('currentDateLabel').textContent = label;
+            $('jumpDateInput').value = fmt(d);
+        }
+
+        function entryRow(ev, ds) {
+            if (ev.holiday) {
+                return `<div class="panel-bg p-3 rounded-2xl border line flex items-center gap-3">
+                    <span class="w-1.5 self-stretch rounded-full" style="background:${ev.color}"></span>
+                    <div class="min-w-0"><h4 class="text-xs font-bold txt-main truncate">${esc(ev.title)}</h4><p class="text-[10px] txt-muted">Holiday</p></div>
+                    <i class="fa-solid fa-flag ml-auto txt-faint text-xs"></i></div>`;
+            }
+            const task = ev.type === 'task', done = task && isDone(ev, ds);
+            const meta = [timeText(ev), TYPE_LABEL[ev.type], ev.period, ev.room, ev.location].filter(Boolean).map(esc).join(' • ');
+            return `<div class="entry panel-bg p-3 rounded-2xl border line flex items-center gap-3" data-act="edit" data-id="${esc(ev.id)}" data-date="${ds}">
+                <span class="w-1.5 self-stretch rounded-full flex-shrink-0" style="background:${esc(ev.color)}"></span>
+                ${task ? `<input type="checkbox" ${done ? 'checked' : ''} data-act="toggle" data-id="${esc(ev.id)}" data-date="${ds}" class="w-4 h-4 rounded flex-shrink-0" aria-label="Mark done">` : ''}
+                <div class="min-w-0 flex-1">
+                    <h4 class="text-xs font-bold txt-main truncate ${done ? 'done-text' : ''}">${esc(ev.title)}</h4>
+                    <p class="text-[10px] txt-muted truncate">${meta}${ev.repeat !== 'none' ? ' <i class="fa-solid fa-rotate ml-1"></i>' : ''}${ev.reminder !== '' ? ' <i class="fa-solid fa-bell ml-1"></i>' : ''}</p>
+                    ${ev.notes ? `<p class="text-[10px] txt-faint truncate mt-0.5">${esc(ev.notes)}</p>` : ''}
+                </div>
+                <button data-act="del" data-id="${esc(ev.id)}" class="txt-faint hover:text-red-500 text-xs p-1.5" aria-label="Delete"><i class="fa-solid fa-trash-can"></i></button>
+            </div>`;
+        }
+
+        function renderMonth() {
+            const y = state.date.getFullYear(), m = state.date.getMonth();
+            const names = Array.from({ length: 7 }, (_, i) => WD[(settings.startWeek + i) % 7]);
+            $('monthWeekHeader').innerHTML = names.map(n => `<span>${n}</span>`).join('');
+            const first = new Date(y, m, 1), lead = (first.getDay() - settings.startWeek + 7) % 7;
+            const total = Math.ceil((lead + daysIn(y, m)) / 7) * 7;
+            const start = addDays(first, -lead), sel = fmt(state.date), today = todayStr();
+            let html = '';
+            for (let i = 0; i < total; i++) {
+                const d = addDays(start, i), ds = fmt(d), items = eventsOn(ds);
+                const chips = items.slice(0, 2).map(e => `<span class="chip ${e.type === 'task' && isDone(e, ds) ? 'done-text' : ''}" style="background:${esc(e.color)}">${esc(e.title)}</span>`).join('');
+                const dots = items.slice(0, 4).map(e => `<span class="dot" style="background:${esc(e.color)}"></span>`).join('');
+                html += `<button data-act="sel" data-date="${ds}" aria-label="${esc(longDate(d))}, ${items.length} entries" class="cell ${ds === sel ? 'selected' : ''} ${d.getMonth() !== m ? 'dim' : ''}">
+                    <span class="num ${ds === today ? 'today' : ''}">${d.getDate()}</span>
+                    <span class="hidden sm:flex flex-col gap-0.5 min-w-0">${chips}${items.length > 2 ? `<span class="text-[9px] txt-faint">+${items.length - 2} more</span>` : ''}</span>
+                    <span class="sm:hidden flex gap-0.5 flex-wrap">${dots}</span>
+                </button>`;
+            }
+            $('monthGrid').innerHTML = html;
+
+            const ds = fmt(state.date), items = eventsOn(ds);
+            $('monthAgenda').innerHTML = `
+                <div class="flex items-center justify-between px-1">
+                    <h3 class="text-xs font-bold txt-main">${esc(longDate(state.date))}${ds === today ? ' <span class="accent-text">· Today</span>' : ''}</h3>
+                    <div class="flex gap-2">
+                        <button data-act="add" data-date="${ds}" class="text-[11px] font-semibold px-2.5 py-1.5 rounded-xl btn-soft"><i class="fa-solid fa-plus mr-1"></i>Add</button>
+                        <button data-act="goto" data-date="${ds}" class="text-[11px] font-semibold px-2.5 py-1.5 rounded-xl btn-soft">Open day</button>
+                    </div>
+                </div>
+                ${items.length ? items.map(e => entryRow(e, ds)).join('') : '<div class="text-center py-6 txt-faint text-xs">Nothing scheduled.</div>'}`;
+        }
+
+        function renderWeek() {
+            const s = weekStart(state.date), today = todayStr();
+            let html = '';
+            for (let i = 0; i < 7; i++) {
+                const d = addDays(s, i), ds = fmt(d), items = eventsOn(ds), isToday = ds === today;
+                html += `<div class="panel-bg p-3 rounded-2xl border line ${isToday ? 'accent-border' : ''} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
+                    <button data-act="goto" data-date="${ds}" class="w-full sm:w-28 flex-shrink-0 text-left">
+                        <p class="text-xs font-bold ${isToday ? 'accent-text' : 'txt-main'}">${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                        ${isToday ? '<p class="text-[10px] accent-text">Today</p>' : ''}
+                    </button>
+                    <div class="flex-1 flex flex-wrap gap-1.5 min-w-0">
+                        ${items.length ? items.map(e => `<span ${e.holiday ? '' : `data-act="edit" data-id="${esc(e.id)}" data-date="${ds}"`} class="${e.holiday ? '' : 'cursor-pointer'} text-[10px] px-2 py-1 rounded-xl text-white font-medium max-w-full truncate ${e.type === 'task' && isDone(e, ds) ? 'done-text' : ''}" style="background:${esc(e.color)}">${e.holiday || e.allDay || !e.time ? '' : esc(fmtTime(e.time)) + ' · '}${esc(e.title)}</span>`).join('') : '<span class="text-xs txt-faint">No scheduled entries</span>'}
+                    </div>
+                    <button data-act="add" data-date="${ds}" class="txt-faint hover:opacity-80 text-xs p-1 self-end sm:self-start" aria-label="Add entry on this day"><i class="fa-solid fa-plus"></i></button>
+                </div>`;
+            }
+            $('weekContainer').innerHTML = html;
+        }
+
+        function renderDay() {
+            const ds = fmt(state.date), items = eventsOn(ds), isToday = ds === todayStr();
+            const count = items.filter(e => !e.holiday).length;
+            $('dayContainer').innerHTML = `
+                <div class="panel-bg p-4 rounded-2xl border line flex items-center justify-between">
+                    <div><h3 class="text-sm font-bold txt-main">${WD_LONG[state.date.getDay()]}${isToday ? ' <span class="accent-text text-xs">· Today</span>' : ''}</h3>
+                    <p class="text-[11px] txt-muted">${count} ${count === 1 ? 'entry' : 'entries'}</p></div>
+                    <button data-act="add" data-date="${ds}" class="accent-bg text-xs font-semibold px-3 py-2 rounded-xl shadow"><i class="fa-solid fa-plus mr-1"></i> Add</button>
+                </div>
+                ${items.length ? items.map(e => entryRow(e, ds)).join('') : '<div class="text-center py-12 txt-faint text-xs">No entries scheduled for this day.</div>'}`;
+        }
+
+        function renderTimetable() {
+            const classes = events.filter(e => e.type === 'class');
+            const box = $('timetableList');
+            if (!classes.length) { box.innerHTML = '<div class="text-center py-12 txt-faint text-xs">No course schedule entries yet. Tap “New Course” to add one.</div>'; return; }
+            const byDay = {}, today = new Date().getDay(), base = startOfDay(new Date());
+            for (let i = 0; i < 14; i++) {
+                const d = addDays(base, i), ds = fmt(d), wd = d.getDay();
+                classes.forEach(c => { if (c.repeat !== 'none' && occursOn(c, ds)) { (byDay[wd] = byDay[wd] || new Map()).set(c.id, c); } });
+            }
+            let html = '';
+            for (let i = 0; i < 7; i++) {
+                const wd = (settings.startWeek + i) % 7, list = byDay[wd] ? [...byDay[wd].values()].sort((a, b) => (a.time || '').localeCompare(b.time || '')) : [];
+                if (!list.length) continue;
+                html += `<div><h4 class="text-[11px] font-bold uppercase tracking-wide mb-1.5 px-1 ${wd === today ? 'accent-text' : 'txt-muted'}">${WD_LONG[wd]}${wd === today ? ' · Today' : ''}</h4><div class="space-y-2">${list.map(classCard).join('')}</div></div>`;
+            }
+            const once = classes.filter(c => c.repeat === 'none').sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+            if (once.length) html += `<div><h4 class="text-[11px] font-bold uppercase tracking-wide mb-1.5 px-1 txt-muted">One-off classes</h4><div class="space-y-2">${once.map(c => classCard(c, true)).join('')}</div></div>`;
+            box.innerHTML = html || '<div class="text-center py-12 txt-faint text-xs">No upcoming classes.</div>';
+        }
+        function classCard(c, showDate) {
+            const bits = [showDate && shortDate(c.date), timeText(c), c.period, c.room, c.instructor].filter(Boolean).map(esc).join(' | ');
+            return `<div class="entry panel-bg p-3.5 rounded-2xl border line flex items-center gap-3" data-act="edit" data-id="${esc(c.id)}">
+                <span class="w-1.5 self-stretch rounded-full" style="background:${esc(c.color)}"></span>
+                <div class="min-w-0 flex-1"><h4 class="text-xs font-bold txt-main truncate"><i class="fa-solid fa-chalkboard mr-1.5 accent-text"></i>${esc(c.title)}</h4>
+                <p class="text-[10px] txt-muted mt-0.5 truncate">${bits}</p></div>
+                <button data-act="del" data-id="${esc(c.id)}" class="txt-faint hover:text-red-500 text-xs p-1.5" aria-label="Delete"><i class="fa-solid fa-trash-can"></i></button></div>`;
+        }
+
+        function renderTasks() {
+            const today = todayStr();
+            const rows = events.filter(e => e.type === 'task').map(e => { const ds = nextOccurrence(e, today); return ds ? { e, ds, done: isDone(e, ds) } : null; }).filter(Boolean);
+            const open = rows.filter(r => !r.done), overdue = open.filter(r => r.ds < today);
+            $('taskSummary').textContent = rows.length ? `${open.length} open${overdue.length ? ' · ' + overdue.length + ' overdue' : ''} · ${rows.length - open.length} done` : 'Deadlines and to-do list';
+            document.querySelectorAll('#taskFilter button').forEach(b => b.classList.toggle('on', b.dataset.v === state.taskFilter));
+            let list = rows.filter(r => state.taskFilter === 'all' || (state.taskFilter === 'open' ? !r.done : r.done));
+            list.sort((a, b) => a.done - b.done || a.ds.localeCompare(b.ds) || (a.e.time || '').localeCompare(b.e.time || ''));
+            if (!list.length) { $('tasksList').innerHTML = `<div class="text-center py-12 txt-faint text-xs">${state.taskFilter === 'done' ? 'No completed tasks yet.' : 'No active tasks or reminders.'}</div>`; return; }
+            $('tasksList').innerHTML = list.map(({ e, ds, done }) => {
+                const od = !done && ds < today, tod = ds === today;
+                return `<div class="entry panel-bg p-3.5 rounded-2xl border line flex items-center gap-3" data-act="edit" data-id="${esc(e.id)}" data-date="${ds}">
+                    <input type="checkbox" ${done ? 'checked' : ''} data-act="toggle" data-id="${esc(e.id)}" data-date="${ds}" class="w-4 h-4 rounded flex-shrink-0" aria-label="Mark done">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-semibold truncate ${done ? 'done-text txt-muted' : 'txt-main'}">${esc(e.title)}</p>
+                        <p class="text-[10px] mt-0.5 ${od ? 'text-red-500 font-semibold' : tod ? 'accent-text font-semibold' : 'txt-muted'}">${od ? 'Overdue · ' : tod ? 'Today · ' : ''}${shortDate(ds)}${e.allDay || !e.time ? '' : ' · ' + esc(fmtTime(e.time))}${e.repeat !== 'none' ? ' · repeats' : ''}</p>
+                    </div>
+                    <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${esc(e.color)}"></span>
+                    <button data-act="del" data-id="${esc(e.id)}" class="txt-faint hover:text-red-500 text-xs p-1.5" aria-label="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                </div>`;
+            }).join('');
+        }
+
+        /* ---------- add / edit ---------- */
+        function buildSwatches() {
+            $('colorPickerContainer').innerHTML = COLORS.map(c => `<button type="button" data-act="color" data-v="${c}" class="w-6 h-6 rounded-full" style="background:${c}" aria-label="Color ${c}"></button>`).join('');
+            $('accentBtns').innerHTML = COLORS.map(c => `<button type="button" data-act="accent" data-v="${c}" class="w-7 h-7 rounded-full hover:scale-110 transition shadow" style="background:${c}" aria-label="Accent ${c}"></button>`).join('');
+        }
+        function setFormColor(c) {
+            formColor = c;
+            document.querySelectorAll('#colorPickerContainer [data-v]').forEach(b => b.classList.toggle('swatch-on', b.dataset.v === c));
+        }
+        function refreshForm() {
+            const type = $('eventType').value;
+            $('classExtraFields').classList.toggle('hidden', type !== 'class');
+            $('timeRow').classList.toggle('hidden', $('eventAllDay').checked);
+            $('untilWrap').classList.toggle('hidden', $('eventRepeat').value === 'none');
+        }
+        function openEventModal(opts = {}) {
+            const ev = opts.id ? events.find(e => e.id === opts.id) : null;
+            editingId = ev ? ev.id : null;
+            $('modalTitle').textContent = ev ? 'Edit Entry' : 'New Calendar Entry';
+            $('btnDeleteEvent').classList.toggle('hidden', !ev);
+            const v = ev || { type: opts.type || 'event', title: '', date: opts.date || fmt(state.date), time: '08:30', endTime: '', allDay: false, repeat: 'none', until: '', reminder: '', location: '', notes: '', period: '', room: '', instructor: '', color: accent };
+            if (!ev && v.type === 'birthday') { v.allDay = true; v.repeat = 'yearly'; }
+            $('eventType').value = v.type; $('eventTitle').value = v.title; $('eventDate').value = v.date;
+            $('eventAllDay').checked = !!v.allDay; $('eventTime').value = v.time || ''; $('eventEndTime').value = v.endTime || '';
+            $('eventRepeat').value = v.repeat; $('eventUntil').value = v.until || ''; $('eventReminder').value = v.reminder;
+            $('eventLocation').value = v.location || ''; $('eventNotes').value = v.notes || '';
+            $('classPeriod').value = v.period || ''; $('classRoom').value = v.room || ''; $('classInstructor').value = v.instructor || '';
+            setFormColor(v.color);
+            refreshForm();
+            openModal('eventModal');
+            setTimeout(() => $('eventTitle').focus(), 50);
+        }
+        function saveEvent() {
+            const title = $('eventTitle').value.trim();
+            if (!title) { showToast('Please enter a title.'); $('eventTitle').focus(); return; }
+            const date = $('eventDate').value;
+            if (!date) { showToast('Please pick a date.'); return; }
+            const type = $('eventType').value, allDay = $('eventAllDay').checked;
+            const time = allDay ? '' : $('eventTime').value, endTime = allDay ? '' : $('eventEndTime').value;
+            if (time && endTime && endTime <= time) { showToast('End time must be after the start time.'); return; }
+            const repeat = $('eventRepeat').value, until = repeat === 'none' ? '' : $('eventUntil').value;
+            if (until && until < date) { showToast('“Repeat until” is before the start date.'); return; }
+            const base = {
+                title, type, date, allDay, time, endTime, repeat, until, color: formColor,
+                reminder: $('eventReminder').value, location: $('eventLocation').value.trim(), notes: $('eventNotes').value.trim(),
+                period: type === 'class' ? $('classPeriod').value.trim() : '', room: type === 'class' ? $('classRoom').value.trim() : '', instructor: type === 'class' ? $('classInstructor').value.trim() : '',
+                updatedAt: Date.now()
+            };
+            if (editingId) { const ev = events.find(e => e.id === editingId); if (ev) Object.assign(ev, base); }
+            else { events.push({ id: uid(), completed: false, doneDates: [], ...base }); }
+            closeModal('eventModal');
+            showToast(editingId ? 'Entry updated' : 'Entry saved');
+            state.date = parse(date);
+            commit();
+        }
+        function deleteEvent(id) {
+            const ev = events.find(e => e.id === id); if (!ev) return;
+            events = events.filter(e => e.id !== id);
+            deleted[id] = Date.now();
+            commit();
+            showToast('Entry removed', { label: 'Undo', run: () => { delete deleted[id]; ev.updatedAt = Date.now(); events.push(ev); commit(); } });
+        }
+        function toggleDone(id, ds) {
+            const ev = events.find(e => e.id === id); if (!ev) return;
+            if (ev.repeat === 'none') ev.completed = !ev.completed;
+            else { const i = ev.doneDates.indexOf(ds); i >= 0 ? ev.doneDates.splice(i, 1) : ev.doneDates.push(ds); }
+            ev.updatedAt = Date.now(); commit();
+        }
+
+        /* ---------- search ---------- */
+        function runSearch() {
+            const q = $('searchInput').value.trim().toLowerCase(), box = $('searchResults');
+            if (!q) { box.innerHTML = '<p class="text-center txt-faint text-xs py-6">Type to search your entries.</p>'; return; }
+            const hits = events.filter(e => [e.title, e.notes, e.room, e.location, e.instructor, e.period].join(' ').toLowerCase().includes(q))
+                .sort((a, b) => a.date.localeCompare(b.date)).slice(0, 60);
+            box.innerHTML = hits.length ? hits.map(e => `<div class="entry card p-3 flex items-center gap-3" data-act="gotoedit" data-id="${esc(e.id)}" data-date="${e.date}">
+                <span class="w-1.5 self-stretch rounded-full" style="background:${esc(e.color)}"></span>
+                <div class="min-w-0 flex-1"><p class="text-xs font-bold txt-main truncate">${esc(e.title)}</p>
+                <p class="text-[10px] txt-muted truncate">${shortDate(e.date)} · ${esc(timeText(e))} · ${TYPE_LABEL[e.type]}${e.repeat !== 'none' ? ' · repeats ' + e.repeat : ''}</p></div></div>`).join('')
+                : '<p class="text-center txt-faint text-xs py-6">No matches.</p>';
+        }
+
+        /* ---------- import / export ---------- */
+        const stamp = () => todayStr();
+        function download(name, mime, data) {
+            const url = URL.createObjectURL(new Blob([data], { type: mime }));
+            const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
+        }
+        function exportXls() {
+            if (!window.XLSX) { showToast('Excel library not loaded (offline?). Use JSON instead.'); return; }
+            const rows = events.map(e => ({ ...e, allDay: e.allDay ? 'TRUE' : 'FALSE', completed: e.completed ? 'TRUE' : 'FALSE', doneDates: e.doneDates.join(',') }));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'TimberlineCalendar');
+            XLSX.writeFile(wb, `Timberline_Calendar_Backup_${stamp()}.xlsx`);
+            showToast('Excel file exported');
+        }
+        function exportJson() {
+            download(`Timberline_Calendar_Backup_${stamp()}.json`, 'application/json', JSON.stringify({ app: 'loonie-calendar', version: 2, events, deleted }, null, 2));
+            showToast('JSON backup exported');
+        }
+        function exportIcs() {
+            const ics = s => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+            const dt = (ds, t) => ds.replace(/-/g, '') + (t ? 'T' + t.replace(':', '') + '00' : '');
+            const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Timberline Calendar//EN', 'CALSCALE:GREGORIAN'];
+            const nowStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+            const RR = { daily: 'FREQ=DAILY', weekdays: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', weekly: 'FREQ=WEEKLY', biweekly: 'FREQ=WEEKLY;INTERVAL=2', monthly: 'FREQ=MONTHLY', yearly: 'FREQ=YEARLY' };
+            events.forEach(e => {
+                lines.push('BEGIN:VEVENT', `UID:${e.id}@loonie-calendar`, `DTSTAMP:${nowStamp}`);
+                if (e.allDay || !e.time) { lines.push(`DTSTART;VALUE=DATE:${dt(e.date)}`, `DTEND;VALUE=DATE:${dt(fmt(addDays(parse(e.date), 1)))}`); }
+                else { lines.push(`DTSTART:${dt(e.date, e.time)}`); if (e.endTime) lines.push(`DTEND:${dt(e.date, e.endTime)}`); }
+                lines.push(`SUMMARY:${ics((e.type === 'task' ? '☐ ' : '') + e.title)}`);
+                const loc = e.location || e.room; if (loc) lines.push(`LOCATION:${ics(loc)}`);
+                const desc = [e.period, e.instructor && 'Instructor: ' + e.instructor, e.notes].filter(Boolean).join('\n'); if (desc) lines.push(`DESCRIPTION:${ics(desc)}`);
+                if (e.repeat !== 'none') lines.push('RRULE:' + RR[e.repeat] + (e.until ? ';UNTIL=' + dt(e.until) : ''));
+                if (e.reminder !== '') lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${ics(e.title)}`, `TRIGGER:-PT${Number(e.reminder)}M`, 'END:VALARM');
+                lines.push('END:VEVENT');
+            });
+            lines.push('END:VCALENDAR');
+            download(`Timberline_Calendar_${stamp()}.ics`, 'text/calendar', lines.join('\r\n'));
+            showToast('Calendar (.ics) exported');
+        }
+        async function handleImport(file) {
+            let items;
+            try {
+                if (/\.(xlsx|xls)$/i.test(file.name)) {
+                    if (!window.XLSX) throw new Error('Excel library not loaded (offline?)');
+                    const wb = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: 'array' });
+                    items = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                } else {
+                    const j = JSON.parse(await file.text());
+                    items = Array.isArray(j) ? j : (j && j.events);
+                }
+                if (!Array.isArray(items)) throw new Error('No entries found');
+            } catch (err) { showToast('Could not read file: ' + err.message); return; }
+            const list = items.map(r => { const n = normalizeEvent(r); if (n && !(r && r.id)) n._noId = true; return n; }).filter(Boolean);
+            if (!list.length) { showToast('No valid entries found in that file.'); return; }
+            const choice = await ask(`Import ${list.length} entries`, 'Merge adds them to your calendar (entries with the same id are updated). Replace swaps out everything on this device.',
+                [{ label: 'Cancel', value: null }, { label: 'Replace all', value: 'replace', danger: true }, { label: 'Merge', value: 'merge', primary: true }]);
+            if (!choice) return;
+            const now = Date.now(), sig = e => [e.title, e.date, e.time, e.type].join('|');
+            if (choice === 'replace') {
+                const keep = new Set(list.map(e => e.id));
+                events.forEach(e => { if (!keep.has(e.id)) deleted[e.id] = now; });
+                events = list.map(e => { delete e._noId; e.updatedAt = now; delete deleted[e.id]; return e; });
+            } else {
+                const byId = new Map(events.map(e => [e.id, e])), sigs = new Set(events.map(sig));
+                list.forEach(e => {
+                    const noId = e._noId; delete e._noId;
+                    if (noId && sigs.has(sig(e))) return;
+                    sigs.add(sig(e));
+                    e.updatedAt = now; delete deleted[e.id];
+                    if (byId.has(e.id)) Object.assign(byId.get(e.id), e); else events.push(e);
+                });
+            }
+            commit(); showToast('Import complete');
+        }
+
+        /* ---------- sync ---------- */
+        const GS_SCRIPT = [
+            '// Timberline Calendar sync — paste into Extensions > Apps Script',
+            'function doPost(e) {',
+            '  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];',
+            '  var s = e.postData.contents, rows = [];',
+            '  for (var i = 0; i < s.length; i += 40000) rows.push([s.substr(i, 40000)]);',
+            '  sh.clear();',
+            '  if (rows.length) sh.getRange(1, 1, rows.length, 1).setValues(rows);',
+            "  return ContentService.createTextOutput('ok');",
+            '}',
+            'function doGet() {',
+            '  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];',
+            "  var n = sh.getLastRow(), s = '';",
+            '  if (n > 0) s = sh.getRange(1, 1, n, 1).getValues().map(function (r) { return r[0]; }).join("");',
+            "  return ContentService.createTextOutput(s || '{}').setMimeType(ContentService.MimeType.JSON);",
+            '}'
+        ].join('\n');
+
+        const payload = () => ({ app: 'loonie-calendar', version: 2, savedAt: Date.now(), events, deleted, settings: { startWeek: settings.startWeek, timeFmt: settings.timeFmt, packs: settings.packs, updatedAt: settings.updatedAt } });
+        function validUrl(u) { try { return new URL(u).protocol === 'https:'; } catch { return false; } }
+        async function pullRemote() {
+            const r = await fetch(sync.url, { cache: 'no-store' });
+            if (!r.ok) throw new Error('Server replied ' + r.status);
+            const t = (await r.text()).trim(); if (!t) return null;
+            let j; try { j = JSON.parse(t); } catch { throw new Error('Reply was not JSON. Check the script is deployed as a web app with access “Anyone”.'); }
+            return j && Array.isArray(j.events) ? j : null;
+        }
+        async function pushRemote() {
+            await fetch(sync.url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload()) });
+        }
+        function mergeRemote(r) {
+            const map = new Map(events.map(e => [e.id, e])), tomb = { ...deleted };
+            for (const [id, ts] of Object.entries(r.deleted || {})) if (!(tomb[id] >= ts)) tomb[id] = ts;
+            for (const raw of r.events || []) {
+                const ne = normalizeEvent(raw); if (!ne) continue;
+                const le = map.get(ne.id);
+                if (!le || ne.updatedAt > le.updatedAt) map.set(ne.id, ne);
+            }
+            const cutoff = Date.now() - 90 * 864e5;
+            for (const [id, ts] of Object.entries(tomb)) {
+                const e = map.get(id);
+                if (e && ts >= e.updatedAt) map.delete(id);
+                else if (e) delete tomb[id];
+                else if (ts < cutoff) delete tomb[id];
+            }
+            events = [...map.values()]; deleted = tomb;
+            const rs = r.settings;
+            if (rs && Number(rs.updatedAt) > settings.updatedAt) {
+                if ([0, 1, 6].includes(Number(rs.startWeek))) settings.startWeek = Number(rs.startWeek);
+                if (rs.timeFmt === '12' || rs.timeFmt === '24') settings.timeFmt = rs.timeFmt;
+                if (rs.packs && typeof rs.packs === 'object') settings.packs = Object.assign(settings.packs, rs.packs);
+                settings.updatedAt = Number(rs.updatedAt); saveSettings(false); syncSettingsUI();
+            }
+        }
+        function setSyncSpin(on) { $('syncIcon').classList.toggle('spin', on); }
+        async function syncNow(quiet, mode = 'both') {
+            if (!validUrl(sync.url)) { if (!quiet) showToast('Enter a valid https:// sync URL first.'); return; }
+            if (syncing) return;
+            syncing = true; setSyncSpin(true); renderSyncStatus('Syncing…');
+            try {
+                if (mode !== 'push') {
+                    const remote = await pullRemote();
+                    if (remote) {
+                        if (mode === 'pull') { events = remote.events.map(normalizeEvent).filter(Boolean); deleted = remote.deleted || {}; }
+                        else mergeRemote(remote);
+                        saveLocal(); renderApp();
+                    } else if (mode === 'pull') throw new Error('Nothing stored in the cloud yet.');
+                }
+                if (mode !== 'pull') await pushRemote();
+                sync.last = Date.now(); sync.status = 'ok';
+                if (!quiet) showToast(mode === 'pull' ? 'Pulled from cloud' : mode === 'push' ? 'Pushed to cloud' : 'Synced');
+            } catch (err) {
+                sync.status = 'Error: ' + (err.message || 'could not reach the sync URL');
+                if (!quiet) showToast('Sync failed. See Settings for details.');
+            } finally { syncing = false; setSyncSpin(false); saveSync(); renderSyncStatus(); }
+        }
+        function scheduleSync() {
+            if (!sync.auto || !validUrl(sync.url)) return;
+            clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow(true), 2500);
+        }
+        function renderSyncStatus(override) {
+            const on = validUrl(sync.url);
+            $('btnHeaderSync').classList.toggle('hidden', !on);
+            const badge = $('syncBadge'), st = $('syncStatus');
+            if (!on) { badge.textContent = 'Not set up'; st.textContent = 'Never synced.'; return; }
+            const err = sync.status && sync.status !== 'ok';
+            badge.textContent = override ? 'Syncing' : err ? 'Error' : sync.last ? 'Connected' : 'Ready';
+            st.textContent = override || (err ? sync.status : sync.last ? 'Last synced ' + new Date(sync.last).toLocaleString() : 'Not synced yet. Tap Sync now.');
+            st.style.color = err && !override ? '#ef4444' : '';
+        }
+        function syncSettingsUI() {
+            $('syncUrl').value = sync.url; $('syncAuto').checked = sync.auto; $('syncOnOpen').checked = sync.onOpen;
+            $('startWeekSelect').value = String(settings.startWeek);
+            document.querySelectorAll('#timeFmtSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === settings.timeFmt));
+            Object.keys(settings.packs).forEach(p => { const el = $('pack' + p[0].toUpperCase() + p.slice(1)); if (el) el.checked = !!settings.packs[p]; });
+            updateNotifyBtn(); renderSyncStatus();
+        }
+
+        /* ---------- reminders ---------- */
+        function updateNotifyBtn() {
+            const b = $('btnNotify'); if (!b) return;
+            if (!('Notification' in window)) { b.textContent = 'Unsupported'; b.disabled = true; return; }
+            b.textContent = Notification.permission === 'granted' ? 'Enabled' : Notification.permission === 'denied' ? 'Blocked' : 'Enable';
+        }
+        function checkReminders() {
+            const now = Date.now();
+            for (const off of [0, 1]) {
+                const ds = fmt(addDays(new Date(), off));
+                for (const ev of eventsOn(ds, { noHoliday: true })) {
+                    if (ev.reminder === '' || (ev.type === 'task' && isDone(ev, ds))) continue;
+                    const [hh, mm] = ((ev.allDay || !ev.time) ? '09:00' : ev.time).split(':').map(Number);
+                    const start = parse(ds); start.setHours(hh, mm, 0, 0);
+                    const fire = start.getTime() - Number(ev.reminder) * 60000, key = `${ev.id}|${ds}|${ev.reminder}`;
+                    if (now >= fire && now <= start.getTime() + 10 * 60000 && !fired.has(key)) {
+                        fired.add(key); jsonSet('loonie_fired', [...fired].slice(-200));
+                        const mins = Math.round((start.getTime() - now) / 60000);
+                        const when = mins > 90 ? 'tomorrow' : mins > 0 ? `in ${mins} min` : 'now';
+                        const body = `${ev.allDay ? 'All day' : fmtTime(ev.time)} · ${when}`;
+                        showToast(`🔔 ${ev.title} — ${body}`);
+                        try { if ('Notification' in window && Notification.permission === 'granted') new Notification(ev.title, { body, tag: key }); } catch { }
+                    }
+                }
+            }
+        }
+
+        /* ---------- events wiring ---------- */
+        document.addEventListener('click', async e => {
+            const t = e.target.closest('[data-act]'); if (t) {
+                const a = t.dataset.act, id = t.dataset.id, ds = t.dataset.date;
+                switch (a) {
+                    case 'edit': openEventModal({ id }); break;
+                    case 'del': e.stopPropagation(); deleteEvent(id); break;
+                    case 'toggle': e.stopPropagation(); toggleDone(id, ds); break;
+                    case 'sel': if (ds === fmt(state.date)) { gotoDay(ds); } else { state.date = parse(ds); renderApp(); } break;
+                    case 'goto': gotoDay(ds); break;
+                    case 'add': openEventModal({ date: ds, type: t.dataset.type }); break;
+                    case 'gotoedit': closeModal('searchModal'); state.date = parse(ds); setTab('day'); openEventModal({ id }); break;
+                    case 'filter': state.taskFilter = t.dataset.v; renderTasks(); break;
+                    case 'color': setFormColor(t.dataset.v); break;
+                    case 'accent': applyAccent(t.dataset.v); break;
+                    case 'theme': applyTheme(t.dataset.v); break;
+                    case 'timefmt': settings.timeFmt = t.dataset.v; saveSettings(); syncSettingsUI(); renderApp(); scheduleSync(); break;
+                    case 'syncnow': readSyncFields(); syncNow(false); break;
+                    case 'syncpush': {
+                        readSyncFields();
+                        if (await ask('Overwrite cloud copy?', 'This replaces the data stored at your sync URL with what is on this device.', [{ label: 'Cancel', value: null }, { label: 'Push', value: 1, primary: true }])) syncNow(false, 'push');
+                        break;
+                    }
+                    case 'syncpull': {
+                        readSyncFields();
+                        if (await ask('Overwrite this device?', 'This replaces the entries on this device with the cloud copy.', [{ label: 'Cancel', value: null }, { label: 'Pull', value: 1, danger: true }])) syncNow(false, 'pull');
+                        break;
+                    }
+                    case 'copyscript':
+                        try { await navigator.clipboard.writeText(GS_SCRIPT); showToast('Script copied'); }
+                        catch { const r = document.createRange(); r.selectNodeContents($('gsScript')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); showToast('Select and copy the script'); }
+                        break;
+                    case 'notify':
+                        if ('Notification' in window) { await Notification.requestPermission(); updateNotifyBtn(); }
+                        break;
+                    case 'resetall':
+                        if (await ask('Delete everything?', 'All entries on this device will be removed. If sync is on, this will also clear them in the cloud.', [{ label: 'Cancel', value: null }, { label: 'Delete all', value: 1, danger: true }])) {
+                            const now = Date.now(); events.forEach(ev => deleted[ev.id] = now); events = []; commit(); showToast('All entries deleted');
+                        }
+                        break;
+                }
+                return;
+            }
+            if (e.target.matches('[data-modal]')) closeModal(e.target.id);
+        });
+
+        function readSyncFields() {
+            sync.url = $('syncUrl').value.trim(); sync.auto = $('syncAuto').checked; sync.onOpen = $('syncOnOpen').checked;
+            saveSync(); renderSyncStatus();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadEvents(); buildSwatches();
+            $('gsScript').textContent = GS_SCRIPT;
+            applyAccent(accent, false); applyTheme(theme, false);
+            syncSettingsUI();
+            document.querySelectorAll('#navTabs .tab-btn').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+            document.querySelectorAll('.closeModalBtn').forEach(b => b.addEventListener('click', () => closeModal(b.closest('[data-modal]').id)));
+            $('openAddModalBtn').addEventListener('click', () => openEventModal({ date: fmt(state.date) }));
+            $('openSettingsBtn').addEventListener('click', () => { syncSettingsUI(); openModal('settingsModal'); });
+            $('openSearchBtn').addEventListener('click', () => { openModal('searchModal'); $('searchInput').value = ''; runSearch(); setTimeout(() => $('searchInput').focus(), 50); });
+            $('searchInput').addEventListener('input', runSearch);
+            $('btnToday').addEventListener('click', () => { state.date = startOfDay(new Date()); renderApp(); });
+            $('btnPrevDate').addEventListener('click', () => shift(-1));
+            $('btnNextDate').addEventListener('click', () => shift(1));
+            $('jumpDateInput').addEventListener('change', e => { if (e.target.value) { state.date = parse(e.target.value); renderApp(); } });
+            $('btnSaveEvent').addEventListener('click', saveEvent);
+            $('btnDeleteEvent').addEventListener('click', () => { const id = editingId; closeModal('eventModal'); if (id) deleteEvent(id); });
+            ['eventType', 'eventAllDay', 'eventRepeat'].forEach(id => $(id).addEventListener('change', refreshForm));
+            $('eventType').addEventListener('change', () => {
+                if (!editingId && $('eventType').value === 'birthday') { $('eventAllDay').checked = true; $('eventRepeat').value = 'yearly'; refreshForm(); }
+            });
+            $('eventTitle').addEventListener('keydown', e => { if (e.key === 'Enter') saveEvent(); });
+            $('startWeekSelect').addEventListener('change', e => { settings.startWeek = parseInt(e.target.value); saveSettings(); renderApp(); scheduleSync(); });
+            document.querySelectorAll('[data-pack]').forEach(cb => cb.addEventListener('change', () => { settings.packs[cb.dataset.pack] = cb.checked; saveSettings(); renderApp(); scheduleSync(); }));
+            ['syncUrl', 'syncAuto', 'syncOnOpen'].forEach(id => $(id).addEventListener('change', readSyncFields));
+            $('btnExportXls').addEventListener('click', exportXls);
+            $('btnExportJson').addEventListener('click', exportJson);
+            $('btnExportIcs').addEventListener('click', exportIcs);
+            $('importFileInput').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) handleImport(f); });
+
+            // keyboard
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') { closeTopModal(); return; }
+                if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.querySelector('[data-modal]:not(.hidden)')) return;
+                if (e.key === 'ArrowLeft') shift(-1);
+                else if (e.key === 'ArrowRight') shift(1);
+                else if (e.key === 't') { state.date = startOfDay(new Date()); renderApp(); }
+                else if (e.key === 'n') openEventModal({ date: fmt(state.date) });
+            });
+            // swipe between periods
+            let sx = 0, sy = 0;
+            $('mainArea').addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+            $('mainArea').addEventListener('touchend', e => {
+                if (!['month', 'week', 'day'].includes(state.tab)) return;
+                const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+                if (Math.abs(dx) > 70 && Math.abs(dy) < 40) shift(dx < 0 ? 1 : -1);
+            }, { passive: true });
+
+            renderApp();
+            checkReminders(); setInterval(checkReminders, 30000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState !== 'visible') return;
+                checkReminders();
+                if (sync.onOpen && validUrl(sync.url) && Date.now() - sync.last > 5 * 60000) syncNow(true);
+            });
+            window.addEventListener('online', () => scheduleSync());
+            if (sync.onOpen && validUrl(sync.url)) setTimeout(() => syncNow(true), 800);
+        });
+    })();
+    </script>
+</body>
+</html>
